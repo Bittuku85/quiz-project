@@ -917,24 +917,69 @@
                     <p>Choose amount to add to your wallet</p>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                    <button class="amount-btn" onclick="setTopUpAmount(100)">₹100</button>
-                    <button class="amount-btn" onclick="setTopUpAmount(250)">₹250</button>
-                    <button class="amount-btn" onclick="setTopUpAmount(500)">₹500</button>
-                    <button class="amount-btn" onclick="setTopUpAmount(1000)">₹1000</button>
+                <div id="amountSelection" style="display: block;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                        <button class="amount-btn" onclick="setTopUpAmount(100)">₹100</button>
+                        <button class="amount-btn" onclick="setTopUpAmount(250)">₹250</button>
+                        <button class="amount-btn" onclick="setTopUpAmount(500)">₹500</button>
+                        <button class="amount-btn" onclick="setTopUpAmount(1000)">₹1000</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Custom Amount</label>
+                        <input type="number" class="form-input" id="customAmount" placeholder="Enter amount (min ₹10)">
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button class="modal-btn secondary" onclick="closeModal('topUpModal')">Cancel</button>
+                        <button class="modal-btn primary" onclick="generateUPIPayment()">
+                            Generate UPI Payment
+                        </button>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Custom Amount</label>
-                    <input type="number" class="form-input" id="customAmount" placeholder="Enter amount">
-                </div>
-                
-                <div class="modal-actions">
-                    <button class="modal-btn secondary" onclick="closeModal('topUpModal')">Cancel</button>
-                    <button class="modal-btn primary" onclick="processTopUp()">
-                        <span id="topUpBtnText">Add Money</span>
-                        <span id="topUpLoader" class="loading" style="display: none;"></span>
-                    </button>
+
+                <div id="upiPaymentSection" style="display: none;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h4>Pay ₹<span id="paymentAmount">0</span> via UPI</h4>
+                        <p style="color: #64748B; font-size: 14px;">Scan QR or pay to UPI ID</p>
+                    </div>
+
+                    <div style="background: #f8fafc; border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center;">
+                        <div style="margin-bottom: 15px;">
+                            <strong>UPI ID:</strong>
+                            <div style="background: white; padding: 10px; border-radius: 8px; margin: 10px 0; font-family: monospace; font-size: 16px; color: var(--accent-blue);">
+                                Bittukr@fam
+                            </div>
+                            <button class="modal-btn secondary" onclick="copyUPIId()" style="font-size: 12px; padding: 8px 12px;">
+                                <i class="fas fa-copy"></i> Copy UPI ID
+                            </button>
+                        </div>
+
+                        <div>
+                            <strong>Or Scan QR Code:</strong>
+                            <div id="qrcode" style="margin: 15px auto; display: flex; justify-content: center;"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Transaction ID / Order ID</label>
+                        <input type="text" class="form-input" id="transactionId" placeholder="Enter transaction ID after payment">
+                    </div>
+
+                    <div style="background: #fef3c7; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+                        <p style="font-size: 14px; color: #92400e; margin: 0;">
+                            <i class="fas fa-info-circle"></i> 
+                            After making payment, enter the transaction ID above and submit for verification.
+                        </p>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button class="modal-btn secondary" onclick="backToAmountSelection()">Back</button>
+                        <button class="modal-btn primary" onclick="submitTopUpRequest()">
+                            <span id="submitBtnText">Submit for Verification</span>
+                            <span id="submitLoader" class="loading" style="display: none;"></span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -975,8 +1020,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-    <!-- Razorpay SDK -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <script>
         // Firebase Configuration (Replace with your config)
@@ -998,6 +1043,7 @@
         let currentUser = null;
         let walletBalance = 1250; // Sample balance
         let currentTournament = null;
+        let currentTopUpAmount = 0;
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', function() {
@@ -1183,7 +1229,7 @@
             }
         }
 
-        // Payment Processing
+        // UPI Payment Processing
         function setTopUpAmount(amount) {
             document.getElementById('customAmount').value = amount;
             // Visual feedback
@@ -1195,7 +1241,7 @@
             event.target.style.color = 'white';
         }
 
-        async function processTopUp() {
+        function generateUPIPayment() {
             const amount = parseInt(document.getElementById('customAmount').value);
             
             if (!amount || amount < 10) {
@@ -1203,61 +1249,118 @@
                 return;
             }
 
+            currentTopUpAmount = amount;
+            
+            // Show UPI payment section
+            document.getElementById('amountSelection').style.display = 'none';
+            document.getElementById('upiPaymentSection').style.display = 'block';
+            document.getElementById('paymentAmount').textContent = amount;
+            
+            // Generate UPI QR Code
+            generateUPIQR(amount);
+        }
+
+        function generateUPIQR(amount) {
+            const upiId = 'Bittukr@fam';
+            const merchantName = 'Fire Tournaments';
+            const transactionNote = `Wallet TopUp Rs${amount}`;
+            
+            // UPI Payment URL format
+            const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&tn=${encodeURIComponent(transactionNote)}&am=${amount}&cu=INR`;
+            
+            // Clear previous QR code
+            document.getElementById('qrcode').innerHTML = '';
+            
+            // Generate QR code
+            QRCode.toCanvas(document.createElement('canvas'), upiUrl, {
+                width: 200,
+                height: 200,
+                color: {
+                    dark: '#1E293B',
+                    light: '#FFFFFF'
+                }
+            }, function (error, canvas) {
+                if (error) {
+                    console.error('QR Code generation error:', error);
+                    document.getElementById('qrcode').innerHTML = '<p style="color: red;">QR Code generation failed</p>';
+                } else {
+                    document.getElementById('qrcode').appendChild(canvas);
+                }
+            });
+        }
+
+        function copyUPIId() {
+            const upiId = 'Bittukr@fam';
+            navigator.clipboard.writeText(upiId).then(() => {
+                alert('UPI ID copied to clipboard!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = upiId;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('UPI ID copied to clipboard!');
+            });
+        }
+
+        function backToAmountSelection() {
+            document.getElementById('upiPaymentSection').style.display = 'none';
+            document.getElementById('amountSelection').style.display = 'block';
+            document.getElementById('transactionId').value = '';
+        }
+
+        async function submitTopUpRequest() {
+            const transactionId = document.getElementById('transactionId').value.trim();
+            
+            if (!transactionId) {
+                alert('Please enter transaction ID');
+                return;
+            }
+
             // Show loading
-            document.getElementById('topUpBtnText').style.display = 'none';
-            document.getElementById('topUpLoader').style.display = 'inline-block';
+            document.getElementById('submitBtnText').style.display = 'none';
+            document.getElementById('submitLoader').style.display = 'inline-block';
 
             try {
-                // Initialize Razorpay (replace with your key)
-                const options = {
-                    key: 'rzp_test_your_key_here',
-                    amount: amount * 100, // Amount in paise
-                    currency: 'INR',
-                    name: 'Fire Tournaments',
-                    description: 'Wallet Top-up',
-                    prefill: {
-                        name: document.getElementById('userName').textContent,
-                        email: 'user@example.com'
-                    },
-                    handler: function(response) {
-                        // Payment successful
-                        walletBalance += amount;
-                        updateWalletDisplay();
-                        
-                        // Save to storage
-                        const userData = JSON.parse(localStorage.getItem('tournamentUser') || '{}');
-                        userData.walletBalance = walletBalance;
-                        localStorage.setItem('tournamentUser', JSON.stringify(userData));
-                        
-                        alert(`Successfully added ₹${amount} to your wallet!`);
-                        closeModal('topUpModal');
-                    },
-                    modal: {
-                        ondismiss: function() {
-                            console.log('Payment modal closed');
-                        }
-                    }
+                // Create topup request
+                const topupRequest = {
+                    userId: currentUser.uid,
+                    userName: document.getElementById('userName').textContent,
+                    amount: currentTopUpAmount,
+                    transactionId: transactionId,
+                    upiId: 'Bittukr@fam',
+                    timestamp: Date.now(),
+                    status: 'pending'
                 };
 
-                // For demo purposes, simulate successful payment
-                setTimeout(() => {
-                    walletBalance += amount;
-                    updateWalletDisplay();
-                    alert(`Successfully added ₹${amount} to your wallet!`);
-                    closeModal('topUpModal');
-                }, 2000);
+                // Save to Firebase (placeholder)
+                await db.collection('topupRequests').add(topupRequest);
 
-                // Uncomment for real Razorpay integration
-                // const rzp = new Razorpay(options);
-                // rzp.open();
+                // Save to localStorage for demo
+                const existingRequests = JSON.parse(localStorage.getItem('topupRequests') || '[]');
+                existingRequests.push({
+                    ...topupRequest,
+                    id: 'req_' + Date.now()
+                });
+                localStorage.setItem('topupRequests', JSON.stringify(existingRequests));
+
+                alert('Top-up request submitted successfully! Your wallet will be updated once admin verifies the payment.');
+                closeModal('topUpModal');
+                
+                // Reset form
+                backToAmountSelection();
+                document.getElementById('customAmount').value = '';
+                currentTopUpAmount = 0;
 
             } catch (error) {
-                alert('Payment failed. Please try again.');
-                console.error('Payment error:', error);
+                alert('Failed to submit request. Please try again.');
+                console.error('Submit topup request error:', error);
             } finally {
                 // Hide loading
-                document.getElementById('topUpBtnText').style.display = 'inline';
-                document.getElementById('topUpLoader').style.display = 'none';
+                document.getElementById('submitBtnText').style.display = 'inline';
+                document.getElementById('submitLoader').style.display = 'none';
             }
         }
 
