@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <style>
+        :root {
+            --bg-primary: #F8FAFC;
+            --bg-secondary: #E2E8F0;
+            --bg-dark: #1E293B;
+            --text-dark: #1E293B;
+            --text-light: #64748B;
+            --accent-blue: #2563EB;
+            --accent-gold: #FBBF24;
+            --accent-red: #DC2626;
+            --accent-green: #10B981;
+            --border: #CBD5E1;
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Russo One', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .admin-app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-dark);
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #374151;
+            text-align: center;
+        }
+
+        .sidebar-logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--accent-gold);
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            background: none;
+            color: white;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .nav-item i {
+            margin-right: 1rem;
+            width: 20px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            background: var(--bg-primary);
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-hidden {
+            margin-left: 0;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-dark);
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .admin-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .notification-badge {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .notification-badge .badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--accent-red);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Content Pages */
+        .content-page {
+            display: none;
+            padding: 2rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .content-page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Dashboard Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .metric-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .metric-icon.blue { background: var(--accent-blue); }
+        .metric-icon.gold { background: var(--accent-gold); }
+        .metric-icon.green { background: var(--accent-green); }
+        .metric-icon.red { background: var(--accent-red); }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .metric-change {
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .metric-change.positive { color: var(--accent-green); }
+        .metric-change.negative { color: var(--accent-red); }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .quick-action-btn {
+            background: white;
+            border: 2px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            color: var(--text-dark);
+            text-decoration: none;
+        }
+
+        .quick-action-btn:hover {
+            border-color: var(--accent-blue);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .quick-action-btn i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent-blue);
+        }
+
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .chart-header {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        /* Data Tables */
+        .data-table {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .search-input {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .add-button {
+            background: var(--accent-blue);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        tr:hover {
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .status-live { background: var(--accent-red); color: white; }
+        .status-upcoming { background: var(--accent-gold); color: var(--text-dark); }
+        .status-past { background: var(--bg-secondary); color: var(--text-dark); }
+        .status-pending { background: #F59E0B; color: white; }
+        .status-approved { background: var(--accent-green); color: white; }
+        .status-rejected { background: var(--accent-red); color: white; }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-edit { background: #3B82F6; color: white; }
+        .btn-delete { background: var(--accent-red); color: white; }
+        .btn-approve { background: var(--accent-green); color: white; }
+        .btn-reject { background: var(--accent-red); color: white; }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .submit-button {
+            width: 100%;
+            background: var(--accent-blue);
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-button:hover {
+            background: #1E40AF;
+        }
+
+        .submit-button:disabled {
+            background: var(--bg-secondary);
+            color: var(--text-light);
+            cursor: not-allowed;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .alert-error {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: #F59E0B;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .top-bar {
+                padding: 1rem;
+            }
+
+            .content-page {
+                padding: 1rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-actions {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+
+            .table-actions {
+                justify-content: space-between;
+            }
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent-blue);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Payment Request Styles */
+        .payment-request {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .payment-request:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .payment-info h4 {
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        .payment-info p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .payment-amount {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-gold);
+        }
+
+        .payment-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .upi-info {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .upi-info p {
+            margin-bottom: 0.5rem;
+        }
+
+        .upi-info strong {
+            color: var(--accent-blue);
+        }
+    </style>
+</head>
+<body>
+    <div id="admin-app"></div>
+
+    <script type="text/babel">
+        // Firebase Configuration (placeholder)
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-auth-domain",
+            projectId: "your-project-id",
+            storageBucket: "your-storage-bucket",
+            messagingSenderId: "your-sender-id",
+            appId: "your-app-id"
+        };
+
+        // Mock data for demonstration
+        const mockTournaments = [
+            {
+                id: 1,
+                title: "Friday Night Clash",
+                status: "live",
+                datetime: "2024-12-20T19:00",
+                map: "Bermuda",
+                prize: 5000,
+                entryFee: 50,
+                playersJoined: 85,
+                maxPlayers: 100,
+                roomId: "123456",
+                roomPass: "FF2024",
+                createdAt: "2024-12-18T10:00"
+            },
+            {
+                id: 2,
+                title: "Weekend Warriors",
+                status: "upcoming",
+                datetime: "2024-12-21T15:00",
+                map: "Purgatory",
+                prize: 10000,
+                entryFee: 100,
+                playersJoined: 45,
+                maxPlayers: 80,
+                roomId: "789012",
+                roomPass: "WAR21",
+                createdAt: "2024-12-19T09:30"
+            },
+            {
+                id: 3,
+                title: "Sunday Special",
+                status: "upcoming",
+                datetime: "2024-12-22T18:00",
+                map: "Kalahari",
+                prize: 7500,
+                entryFee: 75,
+                playersJoined: 20,
+                maxPlayers: 60,
+                roomId: "345678",
+                roomPass: "SUN22",
+                createdAt: "2024-12-19T11:15"
+            }
+        ];
+
+        const mockPlayers = [
+            {
+                id: 1,
+                name: "Rohan Sharma",
+                uid: "987654321",
+                email: "rohan@example.com",
+                walletBalance: 1250,
+                joinedAt: "2024-12-01T10:00",
+                totalTournaments: 15,
+                totalWinnings: 2500,
+                referralCode: "ROHAN2024",
+                referrals: 7
+            },
+            {
+                id: 2,
+                name: "Priya Singh",
+                uid: "876543210",
+                email: "priya@example.com",
+                walletBalance: 850,
+                joinedAt: "2024-12-05T14:30",
+                totalTournaments: 8,
+                totalWinnings: 1200,
+                referralCode: "PRIYA2024",
+                referrals: 3
+            },
+            {
+                id: 3,
+                name: "Amit Kumar",
+                uid: "765432109",
+                email: "amit@example.com",
+                walletBalance: 2100,
+                joinedAt: "2024-11-28T09:15",
+                totalTournaments: 22,
+                totalWinnings: 4800,
+                referralCode: "AMIT2024",
+                referrals: 12
+            }
+        ];
+
+        const mockPaymentRequests = [
+            {
+                id: 1,
+                userId: 1,
+                userName: "Rohan Sharma",
+                amount: 500,
+                transactionId: "TXN123456789",
+                status: "pending",
+                requestedAt: "2024-12-20T10:30",
+                upiId: "Bittukr@fam"
+            },
+            {
+                id: 2,
+                userId: 2,
+                userName: "Priya Singh",
+                amount: 1000,
+                transactionId: "TXN987654321",
+                status: "pending",
+                requestedAt: "2024-12-20T11:45",
+                upiId: "Bittukr@fam"
+            },
+            {
+                id: 3,
+                userId: 3,
+                userName: "Amit Kumar",
+                amount: 750,
+                transactionId: "TXN456789123",
+                status: "approved",
+                requestedAt: "2024-12-19T16:20",
+                approvedAt: "2024-12-19T17:00",
+                upiId: "Bittukr@fam"
+            }
+        ];
+
+        const AdminApp = () => {
+            const [activeTab, setActiveTab] = React.useState('dashboard');
+            const [showModal, setShowModal] = React.useState(null);
+            const [sidebarOpen, setSidebarOpen] = React.useState(true);
+            const [tournaments, setTournaments] = React.useState(mockTournaments);
+            const [players, setPlayers] = React.useState(mockPlayers);
+            const [paymentRequests, setPaymentRequests] = React.useState(mockPaymentRequests);
+            const [loading, setLoading] = React.useState(false);
+            const [message, setMessage] = React.useState(null);
+            const [searchTerm, setSearchTerm] = React.useState('');
+
+            // Dashboard metrics
+            const metrics = {
+                totalTournaments: tournaments.length,
+                totalPlayers: players.length,
+                onlinePlayers: Math.floor(Math.random() * 50) + 20,
+                walletBalance: players.reduce((sum, player) => sum + player.walletBalance, 0),
+                pendingPayments: paymentRequests.filter(p => p.status === 'pending').length,
+                totalRevenue: tournaments.reduce((sum, t) => sum + (t.entryFee * t.playersJoined), 0)
+            };
+
+            // Tournament management
+            const handleCreateTournament = async (formData) => {
+                setLoading(true);
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    const newTournament = {
+                        id: Date.now(),
+                        ...formData,
+                        playersJoined: 0,
+                        status: 'upcoming',
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    setTournaments(prev => [...prev, newTournament]);
+                    setMessage({ type: 'success', text: 'Tournament created successfully!' });
+                    setShowModal(null);
+                } catch (error) {
+                    setMessage({ type: 'error', text: 'Failed to create tournament.' });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleEditTournament = async (id, formData) => {
+                setLoading(true);
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    setTournaments(prev => prev.map(t => 
+                        t.id === id ? { ...t, ...formData } : t
+                    ));
+                    
+                    setMessage({ type: 'success', text: 'Tournament updated successfully!' });
+                    setShowModal(null);
+                } catch (error) {
+                    setMessage({ type: 'error', text: 'Failed to update tournament.' });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleDeleteTournament = async (id) => {
+                if (confirm('Are you sure you want to delete this tournament?')) {
+                    setTournaments(prev => prev.filter(t => t.id !== id));
+                    setMessage({ type: 'success', text: 'Tournament deleted successfully!' });
+                }
+            };
+
+            // Payment management
+            const handlePaymentAction = async (id, action) => {
+                setLoading(true);
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    setPaymentRequests(prev => prev.map(p => 
+                        p.id === id 
+                            ? { 
+                                ...p, 
+                                status: action,
+                                [action + 'At']: new Date().toISOString()
+                              }
+                            : p
+                    ));
+
+                    if (action === 'approved') {
+                        const payment = paymentRequests.find(p => p.id === id);
+                        setPlayers(prev => prev.map(player => 
+                            player.id === payment.userId
+                                ? { ...player, walletBalance: player.walletBalance + payment.amount }
+                                : player
+                        ));
+                    }
+                    
+                    setMessage({ 
+                        type: 'success', 
+                        text: `Payment ${action} successfully!` 
+                    });
+                } catch (error) {
+                    setMessage({ type: 'error', text: `Failed to ${action} payment.` });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Clear messages after 3 seconds
+            React.useEffect(() => {
+                if (message) {
+                    const timer = setTimeout(() => setMessage(null), 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, [message]);
+
+            // Filter functions
+            const filteredTournaments = tournaments.filter(t => 
+                t.title.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            const filteredPlayers = players.filter(p => 
+                p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.uid.includes(searchTerm) ||
+                p.email.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            const Sidebar = () => (
+                <div className={`sidebar ${!sidebarOpen ? 'mobile-hidden' : ''}`}>
+                    <div className="sidebar-header">
+                        <div className="sidebar-logo">
+                            <i className="fas fa-fire"></i> Admin Panel
+                        </div>
+                    </div>
+                    
+                    <div className="sidebar-nav">
+                        {[
+                            { id: 'dashboard', label: 'Dashboard', icon: 'tachometer-alt' },
+                            { id: 'tournaments', label: 'Tournaments', icon: 'trophy' },
+                            { id: 'players', label: 'Players', icon: 'users' },
+                            { id: 'payments', label: 'Payments', icon: 'credit-card' },
+                            { id: 'analytics', label: 'Analytics', icon: 'chart-bar' },
+                            { id: 'settings', label: 'Settings', icon: 'cog' }
+                        ].map(item => (
+                            <button
+                                key={item.id}
+                                className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                                onClick={() => setActiveTab(item.id)}
+                            >
+                                <i className={`fas fa-${item.icon}`}></i>
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            const TopBar = () => (
+                <div className="top-bar">
+                    <div className="top-bar-left">
+                        <button 
+                            className="menu-toggle"
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                        >
+                            <i className="fas fa-bars"></i>
+                        </button>
+                        <h1 className="page-title">
+                            {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                        </h1>
+                    </div>
+                    
+                    <div className="admin-info">
+                        <div className="notification-badge">
+                            <i className="fas fa-bell"></i>
+                            {metrics.pendingPayments > 0 && (
+                                <span className="badge">{metrics.pendingPayments}</span>
+                            )}
+                        </div>
+                        <div className="admin-avatar">A</div>
+                        <span>Admin User</span>
+                    </div>
+                </div>
+            );
+
+            const DashboardPage = () => (
+                <div className="content-page active">
+                    <div className="metrics-grid">
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon blue">
+                                    <i className="fas fa-trophy"></i>
+                                </div>
+                                <div className="metric-change positive">+12%</div>
+                            </div>
+                            <div className="metric-value">{metrics.totalTournaments}</div>
+                            <div className="metric-label">Total Tournaments</div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon green">
+                                    <i className="fas fa-users"></i>
+                                </div>
+                                <div className="metric-change positive">+8%</div>
+                            </div>
+                            <div className="metric-value">{metrics.totalPlayers}</div>
+                            <div className="metric-label">Total Players</div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon gold">
+                                    <i className="fas fa-circle"></i>
+                                </div>
+                                <div className="metric-change positive">Live</div>
+                            </div>
+                            <div className="metric-value">{metrics.onlinePlayers}</div>
+                            <div className="metric-label">Online Players</div>
+                        </div>
+
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon red">
+                                    <i className="fas fa-wallet"></i>
+                                </div>
+                                <div className="metric-change positive">+15%</div>
+                            </div>
+                            <div className="metric-value">₹{metrics.walletBalance.toLocaleString()}</div>
+                            <div className="metric-label">Wallet Balance Held</div>
+                        </div>
+                    </div>
+
+                    <div className="quick-actions">
+                        <button 
+                            className="quick-action-btn"
+                            onClick={() => setShowModal({ type: 'create-tournament' })}
+                        >
+                            <i className="fas fa-plus"></i>
+                            Create Tournament
+                        </button>
+                        <button 
+                            className="quick-action-btn"
+                            onClick={() => setActiveTab('payments')}
+                        >
+                            <i className="fas fa-eye"></i>
+                            View Payments
+                            {metrics.pendingPayments > 0 && (
+                                <span style={{ 
+                                    background: 'var(--accent-red)', 
+                                    color: 'white', 
+                                    borderRadius: '50%', 
+                                    width: '20px', 
+                                    height: '20px', 
+                                    fontSize: '0.8rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginLeft: '0.5rem'
+                                }}>
+                                    {metrics.pendingPayments}
+                                </span>
+                            )}
+                        </button>
+                        <button className="quick-action-btn">
+                            <i className="fas fa-bell"></i>
+                            Send Notification
+                        </button>
+                        <button 
+                            className="quick-action-btn"
+                            onClick={() => setActiveTab('analytics')}
+                        >
+                            <i className="fas fa-chart-line"></i>
+                            View Analytics
+                        </button>
+                    </div>
+
+                    <div className="charts-grid">
+                        <div className="chart-card">
+                            <div className="chart-header">
+                                <h3 className="chart-title">Daily Sign-ups</h3>
+                            </div>
+                            <canvas id="signupsChart" width="400" height="200"></canvas>
+                        </div>
+                        
+                        <div className="chart-card">
+                            <div className="chart-header">
+                                <h3 className="chart-title">Revenue Breakdown</h3>
+                            </div>
+                            <canvas id="revenueChart" width="300" height="300"></canvas>
+                        </div>
+                    </div>
+
+                    <div className="data-table">
+                        <div className="table-header">
+                            <h3 className="table-title">Recent Tournaments</h3>
+                        </div>
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Tournament</th>
+                                        <th>Status</th>
+                                        <th>Players</th>
+                                        <th>Prize Pool</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tournaments.slice(0, 5).map(tournament => (
+                                        <tr key={tournament.id}>
+                                            <td>{tournament.title}</td>
+                                            <td>
+                                                <span className={`status-badge status-${tournament.status}`}>
+                                                    {tournament.status.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td>{tournament.playersJoined}/{tournament.maxPlayers}</td>
+                                            <td>₹{tournament.prize}</td>
+                                            <td>{new Date(tournament.datetime).toLocaleDateString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const TournamentsPage = () => (
+                <div className={`content-page ${activeTab === 'tournaments' ? 'active' : ''}`}>
+                    <div className="data-table">
+                        <div className="table-header">
+                            <h3 className="table-title">Manage Tournaments</h3>
+                            <div className="table-actions">
+                                <input
+                                    type="text"
+                                    placeholder="Search tournaments..."
+                                    className="search-input"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                <button 
+                                    className="add-button"
+                                    onClick={() => setShowModal({ type: 'create-tournament' })}
+                                >
+                                    <i className="fas fa-plus"></i>
+                                    Add Tournament
+                                </button>
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Tournament</th>
+                                        <th>Status</th>
+                                        <th>Date & Time</th>
+                                        <th>Map</th>
+                                        <th>Players</th>
+                                        <th>Entry Fee</th>
+                                        <th>Prize Pool</th>
+                                        <th>Room Details</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredTournaments.map(tournament => (
+                                        <tr key={tournament.id}>
+                                            <td>{tournament.title}</td>
+                                            <td>
+                                                <span className={`status-badge status-${tournament.status}`}>
+                                                    {tournament.status.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td>{new Date(tournament.datetime).toLocaleString()}</td>
+                                            <td>{tournament.map}</td>
+                                            <td>{tournament.playersJoined}/{tournament.maxPlayers}</td>
+                                            <td>₹{tournament.entryFee}</td>
+                                            <td>₹{tournament.prize}</td>
+                                            <td>
+                                                <div style={{ fontSize: '0.8rem' }}>
+                                                    <div>ID: {tournament.roomId}</div>
+                                                    <div>Pass: {tournament.roomPass}</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="action-buttons">
+                                                    <button 
+                                                        className="action-btn btn-edit"
+                                                        onClick={() => setShowModal({ 
+                                                            type: 'edit-tournament', 
+                                                            tournament 
+                                                        })}
+                                                    >
+                                                        <i className="fas fa-edit"></i>
+                                                    </button>
+                                                    <button 
+                                                        className="action-btn btn-delete"
+                                                        onClick={() => handleDeleteTournament(tournament.id)}
+                                                    >
+                                                        <i className="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const PlayersPage = () => (
+                <div className={`content-page ${activeTab === 'players' ? 'active' : ''}`}>
+                    <div className="data-table">
+                        <div className="table-header">
+                            <h3 className="table-title">Manage Players</h3>
+                            <div className="table-actions">
+                                <input
+                                    type="text"
+                                    placeholder="Search players..."
+                                    className="search-input"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Player</th>
+                                        <th>Free Fire UID</th>
+                                        <th>Email</th>
+                                        <th>Wallet Balance</th>
+                                        <th>Tournaments</th>
+                                        <th>Total Winnings</th>
+                                        <th>Referrals</th>
+                                        <th>Joined Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredPlayers.map(player => (
+                                        <tr key={player.id}>
+                                            <td>
+                                                <div>
+                                                    <strong>{player.name}</strong>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                                                        {player.referralCode}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>{player.uid}</td>
+                                            <td>{player.email}</td>
+                                            <td>₹{player.walletBalance}</td>
+                                            <td>{player.totalTournaments}</td>
+                                            <td>₹{player.totalWinnings}</td>
+                                            <td>{player.referrals}</td>
+                                            <td>{new Date(player.joinedAt).toLocaleDateString()}</td>
+                                            <td>
+                                                <div className="action-buttons">
+                                                    <button className="action-btn btn-edit">
+                                                        <i className="fas fa-eye"></i>
+                                                    </button>
+                                                    <button className="action-btn btn-delete">
+                                                        <i className="fas fa-ban"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const PaymentsPage = () => (
+                <div className={`content-page ${activeTab === 'payments' ? 'active' : ''}`}>
+                    <div className="metrics-grid" style={{ marginBottom: '2rem' }}>
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon gold">
+                                    <i className="fas fa-clock"></i>
+                                </div>
+                            </div>
+                            <div className="metric-value">
+                                {paymentRequests.filter(p => p.status === 'pending').length}
+                            </div>
+                            <div className="metric-label">Pending Requests</div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon green">
+                                    <i className="fas fa-check"></i>
+                                </div>
+                            </div>
+                            <div className="metric-value">
+                                {paymentRequests.filter(p => p.status === 'approved').length}
+                            </div>
+                            <div className="metric-label">Approved Today</div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon blue">
+                                    <i className="fas fa-rupee-sign"></i>
+                                </div>
+                            </div>
+                            <div className="metric-value">
+                                ₹{paymentRequests
+                                    .filter(p => p.status === 'pending')
+                                    .reduce((sum, p) => sum + p.amount, 0)
+                                    .toLocaleString()}
+                            </div>
+                            <div className="metric-label">Pending Amount</div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '2rem' }}>
+                        <h3 style={{ marginBottom: '1rem' }}>Payment Requests</h3>
+                        
+                        {paymentRequests
+                            .filter(p => p.status === 'pending')
+                            .map(payment => (
+                            <div key={payment.id} className="payment-request">
+                                <div className="payment-header">
+                                    <div className="payment-info">
+                                        <h4>{payment.userName}</h4>
+                                        <p>Transaction ID: {payment.transactionId}</p>
+                                        <p>Requested: {new Date(payment.requestedAt).toLocaleString()}</p>
+                                        <p>UPI ID: {payment.upiId}</p>
+                                    </div>
+                                    <div className="payment-amount">
+                                        ₹{payment.amount}
+                                    </div>
+                                </div>
+                                
+                                <div className="upi-info">
+                                    <p><strong>Payment Method:</strong> UPI Transfer</p>
+                                    <p><strong>UPI ID:</strong> Bittukr@fam</p>
+                                    <p><strong>Status:</strong> 
+                                        <span className="status-badge status-pending" style={{ marginLeft: '0.5rem' }}>
+                                            PENDING VERIFICATION
+                                        </span>
+                                    </p>
+                                </div>
+                                
+                                <div className="payment-actions">
+                                    <button 
+                                        className="action-btn btn-approve"
+                                        onClick={() => handlePaymentAction(payment.id, 'approved')}
+                                        disabled={loading}
+                                        style={{ padding: '0.75rem 1.5rem', fontSize: '0.9rem' }}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <div className="loading-spinner"></div>
+                                                Processing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fas fa-check"></i>
+                                                Approve & Add to Wallet
+                                            </>
+                                        )}
+                                    </button>
+                                    <button 
+                                        className="action-btn btn-reject"
+                                        onClick={() => handlePaymentAction(payment.id, 'rejected')}
+                                        style={{ padding: '0.75rem 1.5rem', fontSize: '0.9rem' }}
+                                    >
+                                        <i className="fas fa-times"></i>
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        
+                        {paymentRequests.filter(p => p.status === 'pending').length === 0 && (
+                            <div style={{ 
+                                textAlign: 'center', 
+                                padding: '3rem', 
+                                color: 'var(--text-light)',
+                                background: 'white',
+                                borderRadius: '12px'
+                            }}>
+                                <i className="fas fa-check-circle" style={{ fontSize: '3rem', marginBottom: '1rem', color: 'var(--accent-green)' }}></i>
+                                <h3>All Caught Up!</h3>
+                                <p>No pending payment requests at this time.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="data-table">
+                        <div className="table-header">
+                            <h3 className="table-title">Payment History</h3>
+                        </div>
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Player</th>
+                                        <th>Amount</th>
+                                        <th>Transaction ID</th>
+                                        <th>Status</th>
+                                        <th>Requested</th>
+                                        <th>Processed</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paymentRequests.map(payment => (
+                                        <tr key={payment.id}>
+                                            <td>{payment.userName}</td>
+                                            <td>₹{payment.amount}</td>
+                                            <td>{payment.transactionId}</td>
+                                            <td>
+                                                <span className={`status-badge status-${payment.status}`}>
+                                                    {payment.status.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td>{new Date(payment.requestedAt).toLocaleString()}</td>
+                                            <td>
+                                                {payment.approvedAt ? 
+                                                    new Date(payment.approvedAt).toLocaleString() : 
+                                                    '-'
+                                                }
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const AnalyticsPage = () => (
+                <div className={`content-page ${activeTab === 'analytics' ? 'active' : ''}`}>
+                    <div className="charts-grid">
+                        <div className="chart-card">
+                            <div className="chart-header">
+                                <h3 className="chart-title">Daily Revenue</h3>
+                            </div>
+                            <canvas id="revenueLineChart" width="400" height="200"></canvas>
+                        </div>
+                        
+                        <div className="chart-card">
+                            <div className="chart-header">
+                                <h3 className="chart-title">Player Growth</h3>
+                            </div>
+                            <canvas id="playerGrowthChart" width="300" height="300"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div className="metrics-grid">
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon blue">
+                                    <i className="fas fa-chart-line"></i>
+                                </div>
+                                <div className="metric-change positive">+23%</div>
+                            </div>
+                            <div className="metric-value">₹{metrics.totalRevenue.toLocaleString()}</div>
+                            <div className="metric-label">Total Revenue</div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon green">
+                                    <i className="fas fa-user-plus"></i>
+                                </div>
+                                <div className="metric-change positive">+15%</div>
+                            </div>
+                            <div className="metric-value">47</div>
+                            <div className="metric-label">New Players This Week</div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon gold">
+                                    <i className="fas fa-share"></i>
+                                </div>
+                                <div className="metric-change positive">+8%</div>
+                            </div>
+                            <div className="metric-value">
+                                {players.reduce((sum, p) => sum + p.referrals, 0)}
+                            </div>
+                            <div className="metric-label">Total Referrals</div>
+                        </div>
+                        
+                        <div className="metric-card">
+                            <div className="metric-header">
+                                <div className="metric-icon red">
+                                    <i className="fas fa-percentage"></i>
+                                </div>
+                                <div className="metric-change positive">+5%</div>
+                            </div>
+                            <div className="metric-value">78%</div>
+                            <div className="metric-label">Tournament Fill Rate</div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const SettingsPage = () => (
+                <div className={`content-page ${activeTab === 'settings' ? 'active' : ''}`}>
+                    <div className="data-table">
+                        <div className="table-header">
+                            <h3 className="table-title">Payment Settings</h3>
+                        </div>
+                        <div style={{ padding: '2rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">UPI ID for Payments</label>
+                                <input 
+                                    className="form-input" 
+                                    type="text" 
+                                    defaultValue="Bittukr@fam"
+                                    readOnly
+                                />
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginTop: '0.5rem' }}>
+                                    Users will send payments to this UPI ID for wallet top-ups
+                                </p>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="form-label">Referral Bonus Amount</label>
+                                <input 
+                                    className="form-input" 
+                                    type="number" 
+                                    defaultValue="50"
+                                />
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginTop: '0.5rem' }}>
+                                    Amount credited for each successful referral
+                                </p>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="form-label">Minimum Top-up Amount</label>
+                                <input 
+                                    className="form-input" 
+                                    type="number" 
+                                    defaultValue="50"
+                                />
+                            </div>
+                            
+                            <button className="submit-button">
+                                Save Settings
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="data-table">
+                        <div className="table-header">
+                            <h3 className="table-title">Admin Users</h3>
+                            <button className="add-button">
+                                <i className="fas fa-plus"></i>
+                                Add Admin
+                            </button>
+                        </div>
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Last Login</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Admin User</td>
+                                        <td>admin@tournament.com</td>
+                                        <td>Super Admin</td>
+                                        <td>Now</td>
+                                        <td>
+                                            <div className="action-buttons">
+                                                <button className="action-btn btn-edit">
+                                                    <i className="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const Modal = () => {
+                if (!showModal) return null;
+
+                const closeModal = () => setShowModal(null);
+
+                if (showModal.type === 'create-tournament' || showModal.type === 'edit-tournament') {
+                    const isEdit = showModal.type === 'edit-tournament';
+                    const tournament = showModal.tournament || {};
+
+                    return (
+                        <div className="modal active">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h3 className="modal-title">
+                                        {isEdit ? 'Edit Tournament' : 'Create New Tournament'}
+                                    </h3>
+                                    <button className="close-button" onClick={closeModal}>×</button>
+                                </div>
+
+                                <form onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const formData = new FormData(e.target);
+                                    const data = Object.fromEntries(formData);
+                                    
+                                    // Convert form data to proper types
+                                    const tournamentData = {
+                                        ...data,
+                                        prize: parseInt(data.prize),
+                                        entryFee: parseInt(data.entryFee),
+                                        maxPlayers: parseInt(data.maxPlayers)
+                                    };
+
+                                    if (isEdit) {
+                                        handleEditTournament(tournament.id, tournamentData);
+                                    } else {
+                                        handleCreateTournament(tournamentData);
+                                    }
+                                }}>
+                                    <div className="form-grid">
+                                        <div className="form-group">
+                                            <label className="form-label">Tournament Title</label>
+                                            <input 
+                                                className="form-input" 
+                                                type="text" 
+                                                name="title" 
+                                                defaultValue={tournament.title || ''}
+                                                required 
+                                            />
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Map</label>
+                                            <select 
+                                                className="form-select" 
+                                                name="map" 
+                                                defaultValue={tournament.map || ''}
+                                                required
+                                            >
+                                                <option value="">Select Map</option>
+                                                <option value="Bermuda">Bermuda</option>
+                                                <option value="Purgatory">Purgatory</option>
+                                                <option value="Kalahari">Kalahari</option>
+                                                <option value="Alpine">Alpine</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Date & Time</label>
+                                            <input 
+                                                className="form-input" 
+                                                type="datetime-local" 
+                                                name="datetime" 
+                                                defaultValue={tournament.datetime || ''}
+                                                required 
+                                            />
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Max Players</label>
+                                            <input 
+                                                className="form-input" 
+                                                type="number" 
+                                                name="maxPlayers" 
+                                                defaultValue={tournament.maxPlayers || ''}
+                                                min="10" 
+                                                max="100" 
+                                                required 
+                                            />
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Entry Fee (₹)</label>
+                                            <input 
+                                                className="form-input" 
+                                                type="number" 
+                                                name="entryFee" 
+                                                defaultValue={tournament.entryFee || ''}
+                                                min="10" 
+                                                required 
+                                            />
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Prize Pool (₹)</label>
+                                            <input 
+                                                className="form-input" 
+                                                type="number" 
+                                                name="prize" 
+                                                defaultValue={tournament.prize || ''}
+                                                min="100" 
+                                                required 
+                                            />
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Room ID</label>
+                                            <input 
+                                                className="form-input" 
+                                                type="text" 
+                                                name="roomId" 
+                                                defaultValue={tournament.roomId || ''}
+                                                required 
+                                            />
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Room Password</label>
+                                            <input 
+                                                className="form-input" 
+                                                type="text" 
+                                                name="roomPass" 
+                                                defaultValue={tournament.roomPass || ''}
+                                                required 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button 
+                                        type="submit" 
+                                        className="submit-button"
+                                        disabled={loading}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <div className="loading-spinner"></div>
+                                                {isEdit ? 'Updating...' : 'Creating...'}
+                                            </>
+                                        ) : (
+                                            isEdit ? 'Update Tournament' : 'Create Tournament'
+                                        )}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return null;
+            };
+
+            // Initialize charts when components mount
+            React.useEffect(() => {
+                if (activeTab === 'dashboard') {
+                    // Initialize dashboard charts
+                    setTimeout(() => {
+                        const signupsCanvas = document.getElementById('signupsChart');
+                        const revenueCanvas = document.getElementById('revenueChart');
+                        
+                        if (signupsCanvas && window.Chart) {
+                            new Chart(signupsCanvas, {
+                                type: 'line',
+                                data: {
+                                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                                    datasets: [{
+                                        label: 'Sign-ups',
+                                        data: [12, 19, 8, 15, 22, 18, 25],
+                                        borderColor: '#2563EB',
+                                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                        tension: 0.4
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: { legend: { display: false } }
+                                }
+                            });
+                        }
+                        
+                        if (revenueCanvas && window.Chart) {
+                            new Chart(revenueCanvas, {
+                                type: 'doughnut',
+                                data: {
+                                    labels: ['Entry Fees', 'Top-ups', 'Referrals'],
+                                    datasets: [{
+                                        data: [60, 30, 10],
+                                        backgroundColor: ['#2563EB', '#FBBF24', '#10B981']
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: { legend: { position: 'bottom' } }
+                                }
+                            });
+                        }
+                    }, 100);
+                }
+            }, [activeTab]);
+
+            return (
+                <div className="admin-app">
+                    {message && (
+                        <div className={`alert alert-${message.type}`} style={{
+                            position: 'fixed',
+                            top: '20px',
+                            right: '20px',
+                            zIndex: 3000,
+                            minWidth: '300px'
+                        }}>
+                            <i className={`fas fa-${message.type === 'success' ? 'check-circle' : 'exclamation-triangle'}`}></i>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <Sidebar />
+                    
+                    <div className={`main-content ${!sidebarOpen ? 'sidebar-hidden' : ''}`}>
+                        <TopBar />
+                        
+                        {activeTab === 'dashboard' && <DashboardPage />}
+                        {activeTab === 'tournaments' && <TournamentsPage />}
+                        {activeTab === 'players' && <PlayersPage />}
+                        {activeTab === 'payments' && <PaymentsPage />}
+                        {activeTab === 'analytics' && <AnalyticsPage />}
+                        {activeTab === 'settings' && <SettingsPage />}
+                    </div>
+
+                    <Modal />
+                </div>
+            );
+        };
+
+        ReactDOM.render(<AdminApp />, document.getElementById('admin-app'));
+    </script>
+</body>
+</html>
