@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fire Tournaments - Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One:wght@400&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #F8FAFC;
+            --bg-secondary: #E2E8F0;
+            --text-dark: #1E293B;
+            --accent-blue: #2563EB;
+            --accent-gold: #FBBF24;
+            --accent-red: #DC2626;
+            --accent-green: #16A34A;
+            --border: #CBD5E1;
+            --sidebar-bg: #1E293B;
+            --gradient-gaming: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-gold: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Russo One', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: var(--gradient-gaming);
+            text-align: center;
+        }
+
+        .sidebar-logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 15px 25px;
+            color: #CBD5E1;
+            text-decoration: none;
+            transition: all 0.3s;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: 'Russo One', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .nav-item i {
+            margin-right: 12px;
+            width: 16px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.full-width {
+            margin-left: 0;
+        }
+
+        /* Mobile Header */
+        .mobile-header {
+            display: none;
+            background: var(--sidebar-bg);
+            color: white;
+            padding: 15px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mobile-menu-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* Dashboard Header */
+        .dashboard-header {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dashboard-title {
+            font-size: 28px;
+            color: var(--text-dark);
+        }
+
+        .dashboard-subtitle {
+            color: #64748B;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .action-btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn:hover {
+            background: #1e40af;
+            transform: translateY(-2px);
+        }
+
+        .action-btn.secondary {
+            background: var(--bg-secondary);
+            color: var(--text-dark);
+        }
+
+        .action-btn.danger {
+            background: var(--accent-red);
+        }
+
+        .action-btn.success {
+            background: var(--accent-green);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-blue);
+        }
+
+        .stat-card.gold::before { background: var(--accent-gold); }
+        .stat-card.red::before { background: var(--accent-red); }
+        .stat-card.green::before { background: var(--accent-green); }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #64748B;
+            text-transform: uppercase;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+
+        .stat-icon.blue { background: var(--accent-blue); }
+        .stat-icon.gold { background: var(--accent-gold); }
+        .stat-icon.red { background: var(--accent-red); }
+        .stat-icon.green { background: var(--accent-green); }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 5px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-change.positive { color: var(--accent-green); }
+        .stat-change.negative { color: var(--accent-red); }
+
+        /* Section Content */
+        .section-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .section-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Data Tables */
+        .data-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .table-header {
+            background: var(--bg-secondary);
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 18px;
+            color: var(--text-dark);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .table-content {
+            overflow-x: auto;
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 15px 25px;
+            text-align: left;
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .data-table th {
+            background: #F8FAFC;
+            font-weight: bold;
+            color: var(--text-dark);
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .data-table td {
+            color: #64748B;
+        }
+
+        .data-table tr:hover {
+            background: #F8FAFC;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-live {
+            background: #DCFCE7;
+            color: var(--accent-green);
+        }
+
+        .status-upcoming {
+            background: #DBEAFE;
+            color: var(--accent-blue);
+        }
+
+        .status-completed {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .status-pending {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .status-approved {
+            background: #DCFCE7;
+            color: var(--accent-green);
+        }
+
+        .status-rejected {
+            background: #FEE2E2;
+            color: var(--accent-red);
+        }
+
+        /* Forms */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-dark);
+            font-weight: bold;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Russo One', sans-serif;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn.primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background: var(--bg-secondary);
+            color: var(--text-dark);
+        }
+
+        .modal-btn.danger {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .modal-btn.success {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        /* Charts */
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Topup Request Card */
+        .topup-request {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent-gold);
+        }
+
+        .topup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .topup-user {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .topup-amount {
+            font-size: 20px;
+            color: var(--accent-gold);
+            font-weight: bold;
+        }
+
+        .topup-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .topup-detail {
+            font-size: 14px;
+            color: #64748B;
+        }
+
+        .topup-detail strong {
+            color: var(--text-dark);
+        }
+
+        .topup-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.mobile-visible {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .mobile-header {
+                display: flex;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .table-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .table-actions {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🔥 Fire Admin</div>
+                <div class="sidebar-subtitle">Tournament Management</div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <button class="nav-item active" onclick="showSection('dashboard')">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </button>
+                <button class="nav-item" onclick="showSection('tournaments')">
+                    <i class="fas fa-trophy"></i> Tournaments
+                </button>
+                <button class="nav-item" onclick="showSection('players')">
+                    <i class="fas fa-users"></i> Players
+                </button>
+                <button class="nav-item" onclick="showSection('topups')">
+                    <i class="fas fa-wallet"></i> Topup Requests
+                </button>
+                <button class="nav-item" onclick="showSection('analytics')">
+                    <i class="fas fa-chart-bar"></i> Analytics
+                </button>
+                <button class="nav-item" onclick="showSection('settings')">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+            </div>
+        </nav>
+
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div>🔥 Fire Admin</div>
+            <div></div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="section-content active">
+                <div class="dashboard-header">
+                    <div>
+                        <h1 class="dashboard-title">Dashboard</h1>
+                        <p class="dashboard-subtitle">Welcome back! Here's what's happening with your tournaments.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn" onclick="openCreateTournamentModal()">
+                            <i class="fas fa-plus"></i> Create Tournament
+                        </button>
+                        <button class="action-btn secondary" onclick="refreshDashboard()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Tournaments</span>
+                            <div class="stat-icon blue">
+                                <i class="fas fa-trophy"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="totalTournaments">24</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> +12% from last month
+                        </div>
+                    </div>
+
+                    <div class="stat-card gold">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Players</span>
+                            <div class="stat-icon gold">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="totalPlayers">1,247</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> +8% from last month
+                        </div>
+                    </div>
+
+                    <div class="stat-card green">
+                        <div class="stat-header">
+                            <span class="stat-title">Online Players</span>
+                            <div class="stat-icon green">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="onlinePlayers">89</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> +15% from yesterday
+                        </div>
+                    </div>
+
+                    <div class="stat-card red">
+                        <div class="stat-header">
+                            <span class="stat-title">Wallet Balance</span>
+                            <div class="stat-icon red">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="walletBalance">₹45,680</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> +₹12,340 today
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Recent Activities</h3>
+                        <div class="table-actions">
+                            <input type="text" class="search-input" placeholder="Search activities...">
+                        </div>
+                    </div>
+                    <div class="table-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Activity</th>
+                                    <th>User</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentActivities">
+                                <tr>
+                                    <td>10:30 AM</td>
+                                    <td>Tournament Registration</td>
+                                    <td>Rohan Kumar</td>
+                                    <td>₹75</td>
+                                    <td><span class="status-badge status-live">Completed</span></td>
+                                </tr>
+                                <tr>
+                                    <td>10:25 AM</td>
+                                    <td>Wallet Topup</td>
+                                    <td>Arjun Singh</td>
+                                    <td>₹500</td>
+                                    <td><span class="status-badge status-pending">Pending</span></td>
+                                </tr>
+                                <tr>
+                                    <td>10:20 AM</td>
+                                    <td>Tournament Win</td>
+                                    <td>Priya Sharma</td>
+                                    <td>₹1,250</td>
+                                    <td><span class="status-badge status-live">Completed</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Topup Requests Section -->
+            <section id="topups" class="section-content">
+                <div class="dashboard-header">
+                    <div>
+                        <h1 class="dashboard-title">Topup Requests</h1>
+                        <p class="dashboard-subtitle">Review and approve pending wallet topup requests.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn secondary" onclick="refreshTopupRequests()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div id="topupRequestsList">
+                    <!-- Topup requests will be dynamically loaded here -->
+                </div>
+            </section>
+
+            <!-- Tournaments Section -->
+            <section id="tournaments" class="section-content">
+                <div class="dashboard-header">
+                    <div>
+                        <h1 class="dashboard-title">Tournament Management</h1>
+                        <p class="dashboard-subtitle">Create, edit, and manage all tournaments.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn" onclick="openCreateTournamentModal()">
+                            <i class="fas fa-plus"></i> Create Tournament
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">All Tournaments</h3>
+                        <div class="table-actions">
+                            <input type="text" class="search-input" placeholder="Search tournaments...">
+                        </div>
+                    </div>
+                    <div class="table-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tournament</th>
+                                    <th>Date & Time</th>
+                                    <th>Map</th>
+                                    <th>Prize Pool</th>
+                                    <th>Entry Fee</th>
+                                    <th>Players</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tournamentsTable">
+                                <tr>
+                                    <td>Monday Night Massacre</td>
+                                    <td>Today 9:00 PM</td>
+                                    <td>Bermuda</td>
+                                    <td>₹8,000</td>
+                                    <td>₹75</td>
+                                    <td>23/100</td>
+                                    <td><span class="status-badge status-upcoming">Upcoming</span></td>
+                                    <td>
+                                        <button class="action-btn" onclick="editTournament('monday-massacre')">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Weekly Championship</td>
+                                    <td>Tomorrow 6:00 PM</td>
+                                    <td>Purgatory</td>
+                                    <td>₹15,000</td>
+                                    <td>₹150</td>
+                                    <td>89/200</td>
+                                    <td><span class="status-badge status-upcoming">Upcoming</span></td>
+                                    <td>
+                                        <button class="action-btn" onclick="editTournament('weekly-championship')">Edit</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Players Section -->
+            <section id="players" class="section-content">
+                <div class="dashboard-header">
+                    <div>
+                        <h1 class="dashboard-title">Player Management</h1>
+                        <p class="dashboard-subtitle">View and manage all registered players.</p>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">
+                        <h3 class="table-title">All Players</h3>
+                        <div class="table-actions">
+                            <input type="text" class="search-input" placeholder="Search players...">
+                        </div>
+                    </div>
+                    <div class="table-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Player Name</th>
+                                    <th>FF UID</th>
+                                    <th>Wallet Balance</th>
+                                    <th>Tournaments Played</th>
+                                    <th>Total Winnings</th>
+                                    <th>Join Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="playersTable">
+                                <tr>
+                                    <td>Rohan Kumar</td>
+                                    <td>987654321</td>
+                                    <td>₹1,250</td>
+                                    <td>15</td>
+                                    <td>₹3,750</td>
+                                    <td>Dec 15, 2024</td>
+                                    <td>
+                                        <button class="action-btn secondary" onclick="viewPlayer('rohan')">View</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Priya Sharma</td>
+                                    <td>876543210</td>
+                                    <td>₹890</td>
+                                    <td>8</td>
+                                    <td>₹2,100</td>
+                                    <td>Dec 12, 2024</td>
+                                    <td>
+                                        <button class="action-btn secondary" onclick="viewPlayer('priya')">View</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="section-content">
+                <div class="dashboard-header">
+                    <div>
+                        <h1 class="dashboard-title">Analytics & Reports</h1>
+                        <p class="dashboard-subtitle">Track performance and growth metrics.</p>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 class="chart-title">Daily Revenue</h3>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3 class="chart-title">Player Registrations</h3>
+                    <canvas id="registrationChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="section-content">
+                <div class="dashboard-header">
+                    <div>
+                        <h1 class="dashboard-title">Settings</h1>
+                        <p class="dashboard-subtitle">Configure tournament platform settings.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-card">
+                        <h3 style="margin-bottom: 20px;">Payment Settings</h3>
+                        <div class="form-group">
+                            <label class="form-label">UPI ID</label>
+                            <input type="text" class="form-input" value="Bittukr@fam" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Minimum Topup Amount</label>
+                            <input type="number" class="form-input" value="10">
+                        </div>
+                        <button class="action-btn">Save Payment Settings</button>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 style="margin-bottom: 20px;">Referral Settings</h3>
+                        <div class="form-group">
+                            <label class="form-label">Referral Bonus Amount</label>
+                            <input type="number" class="form-input" value="25">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Referral Code Length</label>
+                            <input type="number" class="form-input" value="8">
+                        </div>
+                        <button class="action-btn">Save Referral Settings</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Create Tournament Modal -->
+        <div id="createTournamentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Create New Tournament</h3>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Tournament Title</label>
+                    <input type="text" class="form-input" id="tournamentTitle" placeholder="Enter tournament title">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Date & Time</label>
+                    <input type="datetime-local" class="form-input" id="tournamentDateTime">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Map</label>
+                    <select class="form-select" id="tournamentMap">
+                        <option value="bermuda">Bermuda</option>
+                        <option value="kalahari">Kalahari</option>
+                        <option value="purgatory">Purgatory</option>
+                        <option value="alpine">Alpine</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Prize Pool (₹)</label>
+                    <input type="number" class="form-input" id="tournamentPrize" placeholder="Enter prize pool">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Entry Fee (₹)</label>
+                    <input type="number" class="form-input" id="tournamentFee" placeholder="Enter entry fee">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Max Players</label>
+                    <input type="number" class="form-input" id="tournamentMaxPlayers" placeholder="Enter max players">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Room ID</label>
+                    <input type="text" class="form-input" id="tournamentRoomId" placeholder="Enter room ID">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Room Password</label>
+                    <input type="text" class="form-input" id="tournamentRoomPass" placeholder="Enter room password">
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-btn secondary" onclick="closeModal('createTournamentModal')">Cancel</button>
+                    <button class="modal-btn primary" onclick="createTournament()">Create Tournament</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Topup Approval Modal -->
+        <div id="topupApprovalModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Approve Topup Request</h3>
+                </div>
+                
+                <div id="topupDetails">
+                    <!-- Details will be filled dynamically -->
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-btn secondary" onclick="closeModal('topupApprovalModal')">Cancel</button>
+                    <button class="modal-btn danger" onclick="rejectTopup()">Reject</button>
+                    <button class="modal-btn success" onclick="approveTopup()">Approve</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // Firebase Configuration (Replace with your config)
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Global variables
+        let currentSection = 'dashboard';
+        let currentTopupRequest = null;
+        let revenueChart = null;
+        let registrationChart = null;
+
+        // Initialize Admin Panel
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTopupRequests();
+            initializeCharts();
+            refreshDashboard();
+        });
+
+        // Navigation Functions
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.section-content').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show target section
+            document.getElementById(sectionName).classList.add('active');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            currentSection = sectionName;
+
+            // Load section-specific data
+            if (sectionName === 'topups') {
+                loadTopupRequests();
+            } else if (sectionName === 'analytics') {
+                updateCharts();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-visible');
+        }
+
+        // Topup Management Functions
+        function loadTopupRequests() {
+            const container = document.getElementById('topupRequestsList');
+            const requests = JSON.parse(localStorage.getItem('topupRequests') || '[]');
+            
+            if (requests.length === 0) {
+                container.innerHTML = `
+                    <div class="topup-request">
+                        <div style="text-align: center; color: #64748B;">
+                            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px;"></i>
+                            <h3>No Topup Requests</h3>
+                            <p>All topup requests will appear here for approval.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = requests.map(request => `
+                <div class="topup-request">
+                    <div class="topup-header">
+                        <div class="topup-user">${request.userName}</div>
+                        <div class="topup-amount">₹${request.amount}</div>
+                    </div>
+                    <div class="topup-details">
+                        <div class="topup-detail">
+                            <strong>Transaction ID:</strong> ${request.transactionId}
+                        </div>
+                        <div class="topup-detail">
+                            <strong>UPI ID:</strong> ${request.upiId}
+                        </div>
+                        <div class="topup-detail">
+                            <strong>Date:</strong> ${new Date(request.timestamp).toLocaleString()}
+                        </div>
+                        <div class="topup-detail">
+                            <strong>Status:</strong> 
+                            <span class="status-badge status-${request.status}">
+                                ${request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </span>
+                        </div>
+                    </div>
+                    ${request.status === 'pending' ? `
+                        <div class="topup-actions">
+                            <button class="action-btn danger" onclick="rejectTopupRequest('${request.id}')">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                            <button class="action-btn success" onclick="approveTopupRequest('${request.id}')">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="action-btn secondary" onclick="openTopupDetails('${request.id}')">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function openTopupDetails(requestId) {
+            const requests = JSON.parse(localStorage.getItem('topupRequests') || '[]');
+            const request = requests.find(r => r.id === requestId);
+            
+            if (!request) return;
+            
+            currentTopupRequest = request;
+            
+            document.getElementById('topupDetails').innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">User Name</label>
+                    <input type="text" class="form-input" value="${request.userName}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">User ID</label>
+                    <input type="text" class="form-input" value="${request.userId}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <input type="text" class="form-input" value="₹${request.amount}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Transaction ID</label>
+                    <input type="text" class="form-input" value="${request.transactionId}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">UPI ID</label>
+                    <input type="text" class="form-input" value="${request.upiId}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date & Time</label>
+                    <input type="text" class="form-input" value="${new Date(request.timestamp).toLocaleString()}" readonly>
+                </div>
+            `;
+            
+            document.getElementById('topupApprovalModal').classList.add('active');
+        }
+
+        function approveTopupRequest(requestId) {
+            if (confirm('Are you sure you want to approve this topup request?')) {
+                updateTopupStatus(requestId, 'approved');
+                // Update user wallet balance here
+                alert('Topup request approved successfully!');
+            }
+        }
+
+        function rejectTopupRequest(requestId) {
+            if (confirm('Are you sure you want to reject this topup request?')) {
+                updateTopupStatus(requestId, 'rejected');
+                alert('Topup request rejected.');
+            }
+        }
+
+        function approveTopup() {
+            if (currentTopupRequest) {
+                approveTopupRequest(currentTopupRequest.id);
+                closeModal('topupApprovalModal');
+            }
+        }
+
+        function rejectTopup() {
+            if (currentTopupRequest) {
+                rejectTopupRequest(currentTopupRequest.id);
+                closeModal('topupApprovalModal');
+            }
+        }
+
+        function updateTopupStatus(requestId, status) {
+            const requests = JSON.parse(localStorage.getItem('topupRequests') || '[]');
+            const requestIndex = requests.findIndex(r => r.id === requestId);
+            
+            if (requestIndex !== -1) {
+                requests[requestIndex].status = status;
+                localStorage.setItem('topupRequests', JSON.stringify(requests));
+                
+                // If approved, update user wallet balance
+                if (status === 'approved') {
+                    updateUserWalletBalance(requests[requestIndex].userId, requests[requestIndex].amount);
+                }
+                
+                loadTopupRequests();
+            }
+        }
+
+        function updateUserWalletBalance(userId, amount) {
+            // In a real app, this would update the user's wallet in Firebase
+            // For demo, we'll update localStorage
+            const userData = JSON.parse(localStorage.getItem('tournamentUser') || '{}');
+            if (userData.userId === userId || userId.includes('guest')) {
+                userData.walletBalance = (userData.walletBalance || 0) + amount;
+                localStorage.setItem('tournamentUser', JSON.stringify(userData));
+            }
+        }
+
+        function refreshTopupRequests() {
+            loadTopupRequests();
+            // Add loading animation
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 1000);
+        }
+
+        // Tournament Management Functions
+        function openCreateTournamentModal() {
+            document.getElementById('createTournamentModal').classList.add('active');
+        }
+
+        function createTournament() {
+            const title = document.getElementById('tournamentTitle').value;
+            const dateTime = document.getElementById('tournamentDateTime').value;
+            const map = document.getElementById('tournamentMap').value;
+            const prize = document.getElementById('tournamentPrize').value;
+            const fee = document.getElementById('tournamentFee').value;
+            const maxPlayers = document.getElementById('tournamentMaxPlayers').value;
+            const roomId = document.getElementById('tournamentRoomId').value;
+            const roomPass = document.getElementById('tournamentRoomPass').value;
+
+            if (!title || !dateTime || !prize || !fee || !maxPlayers) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            // Create tournament object
+            const tournament = {
+                id: 'tournament_' + Date.now(),
+                title,
+                dateTime,
+                map,
+                prize: parseInt(prize),
+                fee: parseInt(fee),
+                maxPlayers: parseInt(maxPlayers),
+                roomId,
+                roomPass,
+                registrations: 0,
+                status: 'upcoming',
+                createdAt: Date.now()
+            };
+
+            // Save to Firebase (placeholder)
+            // db.collection('tournaments').add(tournament);
+
+            // Save to localStorage for demo
+            const tournaments = JSON.parse(localStorage.getItem('tournaments') || '[]');
+            tournaments.push(tournament);
+            localStorage.setItem('tournaments', JSON.stringify(tournaments));
+
+            alert('Tournament created successfully!');
+            closeModal('createTournamentModal');
+            
+            // Reset form
+            document.getElementById('tournamentTitle').value = '';
+            document.getElementById('tournamentDateTime').value = '';
+            document.getElementById('tournamentPrize').value = '';
+            document.getElementById('tournamentFee').value = '';
+            document.getElementById('tournamentMaxPlayers').value = '';
+            document.getElementById('tournamentRoomId').value = '';
+            document.getElementById('tournamentRoomPass').value = '';
+        }
+
+        // Modal Functions
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            currentTopupRequest = null;
+        }
+
+        // Dashboard Functions
+        function refreshDashboard() {
+            // Simulate loading new data
+            const btn = event?.target;
+            if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    // Update stats
+                    updateDashboardStats();
+                }, 1000);
+            } else {
+                updateDashboardStats();
+            }
+        }
+
+        function updateDashboardStats() {
+            // Simulate real-time data updates
+            document.getElementById('totalTournaments').textContent = Math.floor(Math.random() * 10) + 20;
+            document.getElementById('totalPlayers').textContent = Math.floor(Math.random() * 500) + 1000;
+            document.getElementById('onlinePlayers').textContent = Math.floor(Math.random() * 50) + 50;
+            document.getElementById('walletBalance').textContent = '₹' + (Math.floor(Math.random() * 20000) + 40000).toLocaleString();
+        }
+
+        // Analytics Functions
+        function initializeCharts() {
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Revenue (₹)',
+                        data: [12000, 15000, 8000, 18000, 22000, 25000, 20000],
+                        borderColor: '#2563EB',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₹' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Registration Chart
+            const registrationCtx = document.getElementById('registrationChart').getContext('2d');
+            registrationChart = new Chart(registrationCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'New Registrations',
+                        data: [45, 52, 38, 65, 78, 85, 72],
+                        backgroundColor: '#FBBF24',
+                        borderColor: '#F59E0B',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (revenueChart && registrationChart) {
+                // Update with new data
+                revenueChart.data.datasets[0].data = Array.from({length: 7}, () => Math.floor(Math.random() * 20000) + 5000);
+                registrationChart.data.datasets[0].data = Array.from({length: 7}, () => Math.floor(Math.random() * 50) + 20);
+                
+                revenueChart.update();
+                registrationChart.update();
+            }
+        }
+
+        // Click outside to close sidebar on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(event.target) && 
+                !mobileMenuBtn.contains(event.target) &&
+                sidebar.classList.contains('mobile-visible')) {
+                sidebar.classList.remove('mobile-visible');
+            }
+        });
+
+        // Auto-refresh topup requests every 30 seconds
+        setInterval(() => {
+            if (currentSection === 'topups') {
+                loadTopupRequests();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
